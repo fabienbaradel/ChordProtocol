@@ -2,20 +2,24 @@ package protocol;
 
 import akka.actor.UntypedActor;
 
-public class ChordNode extends UntypedActor implements Hashable {
+public class ChordNode  implements Hashable { //extends UntypedActor
 
-	int key;
+	private int key;
+	
+	public ChordNode(int k){
+		key = k;
+	}
 	
 	@Override
 	public int getKey() {
 		// TODO Auto-generated method stub
-		return 0;
+		return key;
 	}
 
-	@Override
-	public void onReceive(Object arg0) throws Exception {
-		// TODO Auto-generated method stub
-		
-	}
+//	@Override
+//	public void onReceive(Object arg0) throws Exception {
+//		// TODO Auto-generated method stub
+//		
+//	}
 
 }

@@ -2,8 +2,8 @@ package fingertable;
 
 public class Intervall implements FingerInterface{
 	
-	int lower_band;
-	int upper_band;
+	private int lower_band;
+	private int upper_band;
 	
 	public Intervall(int key, int nbRow){
 		lower_band = ((int)Math.pow(2, nbRow-1)+key) % (int)Math.pow(2,m);
@@ -14,7 +14,7 @@ public class Intervall implements FingerInterface{
 		boolean resp = false;
 		//cas d'un itervalle entrecoupé par le début
 		if(lower_band>upper_band){
-			if(lower_band>=id || upper_band <=id){
+			if( id>=lower_band || id<=upper_band ){
 				resp=true;
 			}
 		}
