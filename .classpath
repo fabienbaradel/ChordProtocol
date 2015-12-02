@@ -8,5 +8,6 @@
 	<classpathentry kind="lib" path="/home/fabien/Documents/SystemesRepartis/Projet/libs/netty-3.8.0.Final.jar"/>
 	<classpathentry kind="lib" path="/home/fabien/Documents/SystemesRepartis/Projet/libs/protobuf-java-2.5.0.jar"/>
 	<classpathentry kind="lib" path="/home/fabien/Documents/SystemesRepartis/Projet/libs/scala-library-2.10.4.jar"/>
+	<classpathentry kind="con" path="org.eclipse.jdt.junit.JUNIT_CONTAINER/4"/>
 	<classpathentry kind="output" path="bin"/>
 </classpath>
