@@ -1,11 +1,13 @@
 package protocol;
 
+import fingertable.Key;
+
 public class ChordActor implements Hashable {
 
 	@Override
-	public int getKey() {
+	public Key getKey() {
 		// TODO Auto-generated method stub
-		return 0;
+		return null;
 	}
 
 }

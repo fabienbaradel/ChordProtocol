@@ -3,7 +3,7 @@ package fingertable;
 import protocol.ChordNode;
 
 public class Reference {
-	private int key;
+	private Key key;
 	private ChordNode node;
 	
 	public Reference(ChordNode n){
@@ -11,11 +11,11 @@ public class Reference {
 		node = n;
 	}
 
-	public int getKey() {
+	public Key getKey() {
 		return key;
 	}
 
-	public void setKey(int key) {
+	public void setKey(Key key) {
 		this.key = key;
 	}
 

@@ -3,7 +3,8 @@ package fingertable;
 import protocol.ChordNode;
 
 public class Row implements FingerInterface {
-	int key, nbRow;
+	Key key;
+	int nbRow;
 	Intervall intervall;
 	Reference reference;
 	
@@ -11,14 +12,20 @@ public class Row implements FingerInterface {
 		key= n.getKey();
 		nbRow = nR;
 		intervall= new Intervall(key, nbRow);
-		reference= new Reference(n);
+		add(n);
+	}
+	
+	//ajout du ChordNode n comme référence
+	public void add(ChordNode n){
+		Reference newRef = new Reference(n);
+		setReference(reference);
 	}
 
-	public int getKey() {
+	public Key getKey() {
 		return key;
 	}
 
-	public void setKey(int key) {
+	public void setKey(Key key) {
 		this.key = key;
 	}
 

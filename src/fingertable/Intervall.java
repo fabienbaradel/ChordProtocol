@@ -1,16 +1,19 @@
 package fingertable;
 
+import protocol.Hashable;
+
 public class Intervall implements FingerInterface{
 	
 	private int lower_band;
 	private int upper_band;
 	
-	public Intervall(int key, int nbRow){
-		lower_band = ((int)Math.pow(2, nbRow-1)+key) % (int)Math.pow(2,m);
-		upper_band = ((int)Math.pow(2, nbRow)+key-1) % (int)Math.pow(2,m);
+	public Intervall(Key key, int nbRow){
+		lower_band = ((int)Math.pow(2, nbRow-1)+key.getKey()) % (int)Math.pow(2,m);
+		upper_band = ((int)Math.pow(2, nbRow)+key.getKey()-1) % (int)Math.pow(2,m);
 	}
 	
-	public boolean belongTo(int id){
+	public boolean belongTo(Hashable h){
+		int id = h.getKey().getKey();
 		boolean resp = false;
 		//cas d'un itervalle entrecoupé par le début
 		if(lower_band>upper_band){

@@ -6,12 +6,16 @@ import org.junit.After;
 import org.junit.Before;
 import org.junit.Test;
 
+import protocol.Data;
+import protocol.Hashable;
+
 public class IntervallTest implements FingerInterface{
 	Intervall intervall;
 
 	@Before
 	public void setUp() throws Exception {
-		int key=3, nbRow=3;
+		int nbRow=3;
+		Key key= new Key(3);
 		intervall = new Intervall(key, nbRow);
 	}
 
@@ -23,14 +27,17 @@ public class IntervallTest implements FingerInterface{
 	public void testBelongTo() {
 		//si l'intervall est à la fin et au début du cercle
 		//à la fin
-		if(!(intervall.belongTo(7))){
+		Hashable h = new Data(new Key(7));
+		if(!(intervall.belongTo(h))){
 			fail("Erreur: belongTo cas complexe gauche");
 		}
-		if(!(intervall.belongTo(2))){
+		h = new Data(new Key(2));
+		if(!(intervall.belongTo(h))){
 			fail("Erreur: belongTo cas complexe droit");
 		}
-		intervall=new Intervall(1, 2);
-		assertTrue(intervall.belongTo(4));
+		h = new Data(new Key(4));
+		intervall=new Intervall(new Key(1), 2);
+		assertTrue(intervall.belongTo(h));
 	}
 
 	@Test

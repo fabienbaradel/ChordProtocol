@@ -5,30 +5,51 @@ import java.util.ArrayList;
 import protocol.ChordNode;
 
 public class FingerTable implements FingerInterface {
-	private int key;
+	private Key key;
 	private ChordNode node;
 	private ArrayList<Row> finger = new ArrayList<Row>(m);
 	
 	public FingerTable(ChordNode n){
 		node = n;
 		key = n.getKey();
-		initFinger();		
+		init();		
 	}
 
 	//initialise la fingertable du noeud 'node' et met toutes ses references à lui même
-	private void initFinger() {
+	private void init() {
 		// TODO Auto-generated method stub
 		for (int i = 1; i < (m+1); i++) {
  			Row row = new Row(i, node);
 			finger.add(row);
 		}		
 	}
+	
+	//ajout d'un ChordNode 'n1' depuis le ChordNode actuel 'n'
+	private void add(ChordNode n1){
+		Key k = n1.getKey();
+		boolean sup = !node.getKey().sup(k); // TRUE si le noeud à ajouter est superieur au noeud actuel
 
-	public int getKey() {
+		//on regarde à quel intervalle de la finger table appartient le noeud à ajouter
+		boolean inside = false;
+		int i = 0;
+		Row row = null;
+		while(!inside){
+			row = finger.get(i);
+			inside = row.getIntervall().belongTo(n1);
+		}
+		//si il y a un referent de la row on l'envoie vers ce noeud
+		Key key_ref = row.getReference().getKey();
+		if( key.equals(key_ref)){
+			
+			
+		}
+	}
+
+	public Key getKey() {
 		return key;
 	}
 
-	public void setKey(int key) {
+	public void setKey(Key key) {
 		this.key = key;
 	}
 

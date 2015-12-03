@@ -1,11 +1,18 @@
 package protocol;
 
+import fingertable.Key;
+
 public class Data implements Hashable{
 
+	private Key key;
+	
+	public Data (Key k){
+		key = k;
+	}
 	@Override
-	public int getKey() {
+	public Key getKey() {
 		// TODO Auto-generated method stub
-		return 0;
+		return key;
 	}
 
 }
