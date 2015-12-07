@@ -6,20 +6,29 @@ public class Row implements FingerInterface {
 	Key key;
 	int nbRow;
 	Intervall intervall;
-	Reference reference;
+	Reference reference=null;;
 	
-	public Row (int nR, ChordNode n){
-		key= n.getKey();
+	public Row (int nR, Key k){
+		key= k;
 		nbRow = nR;
 		intervall= new Intervall(key, nbRow);
-		add(n);
+		//add(n);
 	}
 	
-	//ajout du ChordNode n comme référence
-	public void add(ChordNode n){
-		Reference newRef = new Reference(n);
-		setReference(reference);
+	//renvoie le node de la row
+	public ChordNode node (){
+		return reference.getNode();
 	}
+	
+	public void setNode(ChordNode n) {
+		setReference(new Reference(n));
+		
+	}
+	
+	public int start(){
+		return intervall.getLower_band();
+	}
+	
 
 	public Key getKey() {
 		return key;
@@ -52,6 +61,12 @@ public class Row implements FingerInterface {
 	public void setReference(Reference reference) {
 		this.reference = reference;
 	}
+
+//	//ajout du ChordNode n comme référence
+//	public void add(ChordNode n){
+//		Reference newRef = new Reference(n);
+//		setReference(reference);
+//	}
 	
 
 }

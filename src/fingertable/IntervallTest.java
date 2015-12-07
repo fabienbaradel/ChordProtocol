@@ -23,22 +23,7 @@ public class IntervallTest implements FingerInterface{
 	public void tearDown() throws Exception {
 	}
 
-	@Test
-	public void testBelongTo() {
-		//si l'intervall est à la fin et au début du cercle
-		//à la fin
-		Hashable h = new Data(new Key(7));
-		if(!(intervall.belongTo(h))){
-			fail("Erreur: belongTo cas complexe gauche");
-		}
-		h = new Data(new Key(2));
-		if(!(intervall.belongTo(h))){
-			fail("Erreur: belongTo cas complexe droit");
-		}
-		h = new Data(new Key(4));
-		intervall=new Intervall(new Key(1), 2);
-		assertTrue(intervall.belongTo(h));
-	}
+	
 
 	@Test
 	public void testGetLower_band() {
@@ -61,5 +46,40 @@ public class IntervallTest implements FingerInterface{
 		intervall.setUpper_band(4);
 		assertTrue(intervall.getUpper_band()==4);
 	}
+	
+	@Test
+	public void testIsInside() {
+		//intervalle classique
+		assertTrue(Intervall.isInside(2, 3, 2, 1)==true);
+		assertTrue(Intervall.isInside(2, 3, 2, 2)==false);
+		assertTrue(Intervall.isInside(2, 3, 2, 3)==true);
+		assertTrue(Intervall.isInside(2, 3, 2, 4)==false);
+		
+		//intervalle complexe
+		assertTrue(Intervall.isInside(6, 2, 7, 1)==true);
+		assertTrue(Intervall.isInside(6, 2, 1, 2)==true);
+		assertTrue(Intervall.isInside(6, 2, 4, 2)==false);
+
+		
+
+
+	}
+	
+//	@Test
+//	public void testBelongTo() {
+//		//si l'intervall est à la fin et au début du cercle
+//		//à la fin
+//		Hashable h = new Data(new Key(7));
+//		if(!(intervall.belongTo(h))){
+//			fail("Erreur: belongTo cas complexe gauche");
+//		}
+//		h = new Data(new Key(2));
+//		if(!(intervall.belongTo(h))){
+//			fail("Erreur: belongTo cas complexe droit");
+//		}
+//		h = new Data(new Key(4));
+//		intervall=new Intervall(new Key(1), 2);
+//		assertTrue(intervall.belongTo(h));
+//	}
 
 }

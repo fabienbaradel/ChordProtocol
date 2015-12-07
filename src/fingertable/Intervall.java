@@ -12,19 +12,43 @@ public class Intervall implements FingerInterface{
 		upper_band = ((int)Math.pow(2, nbRow)+key.getKey()-1) % (int)Math.pow(2,m);
 	}
 	
-	public boolean belongTo(Hashable h){
-		int id = h.getKey().getKey();
-		boolean resp = false;
-		//cas d'un itervalle entrecoupé par le début
-		if(lower_band>upper_band){
-			if( id>=lower_band || id<=upper_band ){
+	public Intervall(int l, int u){
+		lower_band = l;
+		upper_band = u;
+	}
+	
+	
+	//type = 1: [;)
+	//type = 2: (;]
+	//type = 3: [;]
+	//type = 4: (;)
+	public static boolean isInside(int lower_band,int upper_band,int id, int type){
+		boolean resp=false;
+		if(type==1){
+			if( (id>=lower_band && id<upper_band)
+					|| (lower_band>upper_band && id<upper_band && id<=lower_band)
+					|| (lower_band>upper_band && id>upper_band && id>=lower_band) ){
 				resp=true;
-			}
+			}		
+		}else if(type==2){
+			if( (id>lower_band && id<=upper_band)
+					|| (lower_band>upper_band && id<=upper_band && id<lower_band)
+					|| (lower_band>upper_band && id>=upper_band && id>lower_band) ){
+				resp=true;
+			}			
+		}else if(type==3){
+			if( (id>=lower_band && id<=upper_band)
+					|| (lower_band>upper_band && id<=upper_band && id<=lower_band)
+					|| (lower_band>upper_band && id>=upper_band && id>=lower_band) ){
+				resp=true;
+			}			
 		}
-		else{//cas d'un intervalle classique
-			if(lower_band <= id && id<=upper_band){
+		else if(type==4){
+			if( (id>lower_band && id<upper_band)
+					|| (lower_band>upper_band && id<upper_band && id<lower_band)
+					|| (lower_band>upper_band && id>upper_band && id>lower_band) ){
 				resp=true;
-			}
+			}			
 		}
 		return resp;
 	}
@@ -44,5 +68,25 @@ public class Intervall implements FingerInterface{
 	public void setUpper_band(int upper_band) {
 		this.upper_band = upper_band;
 	}
+	
+	public String toString(){
+		return "["+lower_band+";"+upper_band+"]";
+	}
 
+//	public boolean belongTo(Hashable h){
+//	int id = h.getKey().getKey();
+//	boolean resp = false;
+//	//cas d'un itervalle entrecoupé par le début
+//	if(lower_band>upper_band){
+//		if( id>=lower_band || id<=upper_band ){
+//			resp=true;
+//		}
+//	}
+//	else{//cas d'un intervalle classique
+//		if(lower_band <= id && id<=upper_band){
+//			resp=true;
+//		}
+//	}
+//	return resp;
+//}
 }
