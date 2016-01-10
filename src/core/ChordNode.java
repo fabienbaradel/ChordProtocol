@@ -20,9 +20,10 @@ public class ChordNode implements KeyRoutable {
 		actorRef = actR;
 	}
 
+	// on ne compare pas les references! unqiuement la key!!!
 	@Override
 	public int compareTo(KeyRoutable arg0) {
-		return this.key.compareTo(arg0.getKey());
+		return  this.key.compareTo(arg0.getKey()) ;
 	}
 
 	@Override
@@ -39,5 +40,15 @@ public class ChordNode implements KeyRoutable {
 		return actorRef;
 	}
 
+	
+	@Override
+	public boolean equals(Object obj){
+		boolean rep = false;
+		if( obj instanceof KeyRoutable ){
+			KeyRoutable keyRoutable = (KeyRoutable) obj;
+			rep = keyRoutable.compareTo(this) == 0;
+		}
+		return rep;
+	}
 
 }

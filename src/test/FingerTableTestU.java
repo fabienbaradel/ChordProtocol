@@ -490,7 +490,7 @@ public class FingerTableTestU {
 		assertEquals(ft.get(6).getSuccessor(), chord);
 		assertEquals(ft.get(7).getSuccessor(), chord);
 		assertEquals(ft.getSuccessor(),chord);
-		assertEquals(ft.getPredecessor(),chord);
+		assertNull(ft.getPredecessor());
 	}
 	
 	@Test

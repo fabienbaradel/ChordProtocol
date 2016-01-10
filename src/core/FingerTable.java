@@ -196,7 +196,7 @@ public class FingerTable {
 
 		// si on supprime le dernier noeud qu'il y avait dans la fingertable
 		// alors on remet comme à la base le predecessor à null
-		if (predecessor.getKey().compareTo(k) == 0) {
+		if (predecessor!= null && predecessor.getKey().compareTo(k) == 0) {
 			predecessor = null;
 		}
 	}

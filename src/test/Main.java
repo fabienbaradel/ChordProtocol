@@ -13,7 +13,11 @@ import core.KeyRoutable;
 import protocol.ChordActor;
 import protocol.DisplayFTMsg;
 import protocol.JoinMsg;
+import protocol.PredecessorMsg;
 import protocol.RemoveMsg;
+import protocol.UpdateFingerMsg;
+import protocol.UpdatePredecessorMsg;
+import protocol.UpdateSuccessorMsg;
 
 import static org.junit.Assert.*;
 
@@ -23,324 +27,206 @@ import java.util.TreeMap;
 import org.junit.Test;
 
 public class Main {
+
 	final static ActorSystem system = ActorSystem.create("ProtocolChord");
-	static TreeMap<Integer, ActorRef> listActorRef;
+	static TreeMap<Integer, TestActorRef<ChordActor>> listActorRef; // OBLIGATOIRE
+																	// POUR
+																	// FAIRE
+	// DES TESTS
 	static Scanner sc = new Scanner(System.in);
 
-	@Test
-	public void testMenu() {
-		// initialisation du reseau pair à pair CHORD
-		init_chord();
+	public static ChordActor create_chordActor(Integer num) {
+		// creation d'un actorRef de valeur 'num'
+		Key key = new Key(num);
+		final Props props = Props.create(ChordActor.class, key);
+		String name = "actorRef" + num;
+		final TestActorRef<ChordActor> ref = TestActorRef.create(system, props, name);
+
+		// ajout dans notre liste
+		listActorRef.put(num, ref);
+
+		// return d'un chordActor par le biais de la library akka-testkit
+		return ref.underlyingActor();
+	}
+
+	public static ChordActor init_chord(int value_key) {
+		listActorRef = new TreeMap<Integer, TestActorRef<ChordActor>>();
+
+		ChordActor init_actor = create_chordActor(value_key);
+
+		System.out.println("\nInitialisation du réseau CHORD avec l'acteur " + value_key);
+
+		return init_actor;
 	}
 
 	@Test
-	public void testAdd1() throws InterruptedException {
-		init_chord(0);
-		Thread.sleep(1500);
-		displayFingerTable(0);
-		Thread.sleep(4000);
-	}
+	public void testInit_chord() {
+		ChordActor actor0 = init_chord(0);
 
-	@Test
-	public void testAdd2() throws InterruptedException {
-		init_chord(0);
-		addActor_to_chord(50, 0);
-		Thread.sleep(1500);
-		displayFingerTable(0);
-		displayFingerTable(50);
-	}
+		assertTrue(actor0.getKey().compareTo(new Key(0)) == 0);
+		FingerTable ft0 = actor0.getFinger();
 
-	@Test
-	public void testAdd3() throws InterruptedException {
-		init_chord(0);
-		addActor_to_chord(50, 0);
+		// Test des referents de la FT
+		assertEquals(ft0.get(0).getSuccessor(), actor0);
+		assertEquals(ft0.get(1).getSuccessor(), actor0);
+		assertEquals(ft0.get(2).getSuccessor(), actor0);
+		assertEquals(ft0.get(3).getSuccessor(), actor0);
+		assertEquals(ft0.get(4).getSuccessor(), actor0);
+		assertEquals(ft0.get(5).getSuccessor(), actor0);
+		assertEquals(ft0.get(6).getSuccessor(), actor0);
+		assertEquals(ft0.get(7).getSuccessor(), actor0);
 
-		Thread.sleep(1500);
-
-		addActor_to_chord(35, 50);
-		Thread.sleep(1500);
-		displayFingerTable(0);
-		displayFingerTable(50);
-		displayFingerTable(35);
-	}
-
-	@Test
-	public void testAdd4() throws InterruptedException {
-		init_chord(0);
-		addActor_to_chord(50, 0);
-
-		Thread.sleep(1500);
-
-		addActor_to_chord(35, 50);
-
-		Thread.sleep(1500);
-
-		displayFingerTable(0);
-		displayFingerTable(50);
-		displayFingerTable(35);
-
-		addActor_to_chord(34, 50);
-
-		Thread.sleep(1500);
-
-		displayFingerTable(34);
+		// Test du successor et predecessos
+		assertEquals(ft0.getSuccessor(), actor0);
+		assertNull(ft0.getPredecessor());
 
 	}
 
-	@Test
-	public void testAdd5() throws InterruptedException {
-		init_chord(0);
-		addActor_to_chord(50, 0);
-
-		Thread.sleep(1500);
-
-		addActor_to_chord(35, 0);
-
-		Thread.sleep(1500);
-
-		displayFingerTable(0);
-		displayFingerTable(50);
-		displayFingerTable(35);
-
-		addActor_to_chord(33, 50);
-
-		Thread.sleep(1500);
-
-		displayFingerTable(33);
-	}
-
-	@Test
-	public void testAdd6() throws InterruptedException {
-		init_chord(207);
-		addActor_to_chord(0, 207);
-		Thread.sleep(1500);
-		displayFingerTable(0);
-		Thread.sleep(1500);
-		displayFingerTable(207);
-
-		addActor_to_chord(109, 0);
-		Thread.sleep(1500);
-		displayFingerTable(0);
-		Thread.sleep(1500);
-		displayFingerTable(109);
-		Thread.sleep(1500);
-		displayFingerTable(207);
-		// le predecessor et successor de 207 n'est pas à jour! => stabilisation
-
-		addActor_to_chord(190, 207);
-		Thread.sleep(1500);
-
-		displayFingerTable(0);
-		Thread.sleep(1500);
-		displayFingerTable(109);
-		Thread.sleep(1500);
-		displayFingerTable(190);
-		Thread.sleep(1500);
-		displayFingerTable(207);
-
-	}
-
-	@Test
-	public void testRemove1() throws InterruptedException {
-		init_chord(207);
-		// Thread.sleep(1500);
-		addActor_to_chord(0, 207);
-		// Thread.sleep(1500);
-		removeActor_from_chord(0, 207);
-		// Thread.sleep(1500);
-		displayFingerTable(207);
-
-	}
-
-	public static void init_chord() {
-		System.out.println("Entrez le numéro du premier acteur du système:");
+	public static ChordActor addActor_to_chord(int value_key, int num_actor) {
 		try {
-			listActorRef = new TreeMap<Integer, ActorRef>();
-			String nextIntString = sc.nextLine();
-			int value_key = Integer.parseInt(nextIntString);
-			Key k = new Key(value_key);
-			ActorRef ca = system.actorOf(Props.create(ChordActor.class, k), "chordActor" + k);
-
-			// ajout dans la liste des actorRef
-			listActorRef.put(k.getValue(), ca);
-
-			// retour au menu
-			menu();
-
-		} catch (Exception e) {
-			System.out.println("Erreur, entrez un entier. Recommencer");
-			menu();
-		}
-
-	}
-
-	@Test
-	public void demonstrateTestActorRef() {
-		Key k = new Key(0);
-		final Props props = Props.create(ChordActor.class, k);
-		final TestActorRef<ChordActor> ref = TestActorRef.create(system, props, "testA");
-		final ChordActor actor = ref.underlyingActor();
-
-		System.out.println(actor.toString());
-		assertEquals(actor.getKey(), k);
-
-		// =====> changer les méthodes en fonction pour récupérer un ChordActor
-		// à chaque fois et effectuer des test ensuite!!!! YOUPI!!!
-
-	}
-
-	public static void init_chord(int value_key) {
-		try {
-			listActorRef = new TreeMap<Integer, ActorRef>();
-
-			Key k = new Key(value_key);
-			ActorRef ca = system.actorOf(Props.create(ChordActor.class, k), "chordActor" + k);
-
-			// ajout dans la liste des actorRef
-			listActorRef.put(k.getValue(), ca);
-
-			System.out.println("\nInitialisation du réseau CHORD avec l'acteur " + value_key);
-
-		} catch (Exception e) {
-			System.out.println("\nErreur, entrez un entier. Recommencer");
-			init_chord(value_key);
-		}
-
-	}
-
-	public static void addActor_to_chord() {
-		try {
-
-			System.out.println("Entrez le numéro de l'acteur à ajouter au système:");
-			String nextIntString = sc.nextLine();
-			int value_key = Integer.parseInt(nextIntString);
+			System.out.println("Ajout d'acteur");
 			Key new_key = new Key(value_key);
 
-			// noeud à partir duquel on fait l'ajout
-			System.out.println("Entrez le numéro du noeud à partir d'où ajouter l'acteur " + new_key);
-			nextIntString = sc.nextLine();
-			int num_actor = Integer.parseInt(nextIntString);
-
+			// on récupère la référence de l'acteur par lequel on souhaite
+			// accéder au reseau Chord
 			ActorRef ar = listActorRef.get(num_actor);
-			if (ar != null) {
 
-				// creation d'un acteur et de sa reference
-				ActorRef ca_new = system.actorOf(Props.create(ChordActor.class, new_key), "chordActor" + new_key);
+			// creation d'un acteur et de sa reference
+			ChordActor new_actor = create_chordActor(value_key);
 
-				// creation du message d'ajout
-				JoinMsg join = new JoinMsg(new_key, ca_new);
+			// creation du message d'ajout
+			JoinMsg join = new JoinMsg(new_key, new_actor.getSelf());
 
-				// ajout du noeud new_key par le biais de l'actor de ref ar dans
-				// le reseau
-				ar.tell(join, ca_new);
+			// ajout du noeud new_key par le biais de l'actor de ref ar dans
+			// le reseau
+			ar.tell(join, new_actor.getSelf());
 
-				// ajout dans la liste des actorRef
-				listActorRef.put(new_key.getValue(), ca_new);
+			System.out.println("\nL'acteur " + value_key + " a été ajouté au réseau par " + num_actor);
 
-				// retour au menu
-				menu();
-
-			} else {
-				System.out.println("neoud inexistant, recommencez");
-				// retour au menu
-				menu();
-			}
+			return new_actor;
 
 		} catch (Exception e) {
-			System.out.println("Erreur, recommencez l'ajout.");
-			menu();
+			System.out.println("\nErreur");
+			return null;
 		}
 
 	}
 
-	public static void addActor_to_chord(int value_key, int num_actor) {
-		try {
-			Key new_key = new Key(value_key);
+	@Test
+	public void testAdd1() {
+		ChordActor actor0 = init_chord(0);
+		ChordActor actor15 = addActor_to_chord(15, 0);
 
-			ActorRef ar = listActorRef.get(num_actor);
-			if (ar != null) {
+		System.out.println(actor0);
+		FingerTable ft0 = actor0.getFinger();
+		// Test des referents de la FT
+		assertEquals(ft0.get(0).getSuccessor(), actor0);
+		assertEquals(ft0.get(1).getSuccessor(), actor0);
+		assertEquals(ft0.get(2).getSuccessor(), actor0);
+		assertEquals(ft0.get(3).getSuccessor(), actor15);
+		assertEquals(ft0.get(4).getSuccessor(), actor15);
+		assertEquals(ft0.get(5).getSuccessor(), actor15);
+		assertEquals(ft0.get(6).getSuccessor(), actor15);
+		assertEquals(ft0.get(7).getSuccessor(), actor15);
 
-				// creation d'un acteur et de sa reference
-				ActorRef ca_new = system.actorOf(Props.create(ChordActor.class, new_key), "chordActor" + new_key);
+		// Test du successor et predecessos
+		assertEquals(ft0.getSuccessor(), actor15);
+		assertEquals(ft0.getPredecessor(), actor15);
 
-				// creation du message d'ajout
-				JoinMsg join = new JoinMsg(new_key, ca_new);
+		System.out.println(actor15);
+		FingerTable ft15 = actor15.getFinger();
+		// Test des referents de la FT
+		assertEquals(ft15.get(0).getSuccessor(), actor15);
+		assertEquals(ft15.get(1).getSuccessor(), actor15);
+		assertEquals(ft15.get(2).getSuccessor(), actor15);
+		assertEquals(ft15.get(3).getSuccessor(), actor15);
+		assertEquals(ft15.get(4).getSuccessor(), actor15);
+		assertEquals(ft15.get(5).getSuccessor(), actor15);
+		assertEquals(ft15.get(6).getSuccessor(), actor15);
+		assertEquals(ft15.get(7).getSuccessor(), actor0);
 
-				// ajout du noeud new_key par le biais de l'actor de ref ar dans
-				// le reseau
-				ar.tell(join, ca_new);
+		// Test du successor et predecessos
+		assertEquals(ft15.getSuccessor(), actor0);
+		assertEquals(ft15.getPredecessor(), actor0);
+	}
 
-				// ajout dans la liste des actorRef
-				listActorRef.put(new_key.getValue(), ca_new);
+	// un certain type dajout
+	@Test
+	public void testAdd2() {
+		ChordActor actor207 = init_chord(207);
+		ChordActor actor0 = addActor_to_chord(0, 207);
+		ChordActor actor109 = addActor_to_chord(109, 0);
+		ChordActor actor190 = addActor_to_chord(190, 0);
 
-				System.out.println("\nL'acteur " + value_key + " a été ajouté au réseau par " + num_actor);
-
-			} else {
-				System.out.println("\nneoud inexistant, recommencez");
-				// retour au menu
-				addActor_to_chord(value_key, num_actor);
-			}
-
-		} catch (Exception e) {
-			System.out.println("\nErreur, recommencez l'ajout.");
-			addActor_to_chord(value_key, num_actor);
-		}
+		/**
+		 * on se rend compte que cretains acteurs n'ont pas l'informations sur
+		 * l'ajout de noeud =====> STABILISATION!
+		 */
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor190);
+		System.out.println(actor207);
 
 	}
 
-	public static void displayFingerTable() {
-		try {
-			System.out.println("Entrez le numéro de l'acteur dont vous voulez voir la FT:");
-			String nextIntString = sc.nextLine();
-			int value_key = Integer.parseInt(nextIntString);
+	// memes onoeud mais différents approche d'ajouts
+	// => différences et donc stabilisation
+	@Test
+	public void testAdd3() {
+		ChordActor actor207 = init_chord(207);
+		ChordActor actor0 = addActor_to_chord(0, 207);
+		ChordActor actor109 = addActor_to_chord(109, 0);
+		ChordActor actor190 = addActor_to_chord(190, 0);
 
-			ActorRef actorRef = listActorRef.get(value_key);
-
-			DisplayFTMsg displayFT = new DisplayFTMsg();
-			actorRef.tell(displayFT, actorRef);
-
-			// retour au menu
-			menu();
-
-		} catch (Exception e) {
-			System.out.println("impossible");
-			menu();
-		}
+		/**
+		 * on se rend compte que cretains acteurs n'ont pas l'informations sur
+		 * l'ajout de noeud =====> STABILISATION!
+		 */
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor190);
+		System.out.println(actor207);
 
 	}
 
-	public static void displayFingerTable(int value_key) {
-		try {
+	// visualisation de la necessité de stabilisation
+	@Test
+	public void testAdd4() {
+		ChordActor actor207 = init_chord(207);
+		ChordActor actor0 = addActor_to_chord(0, 207);
+		ChordActor actor109 = addActor_to_chord(109, 0);
+		ChordActor actor190 = addActor_to_chord(190, 0);
 
-			ActorRef actorRef = listActorRef.get(value_key);
-
-			DisplayFTMsg displayFT = new DisplayFTMsg();
-			actorRef.tell(displayFT, actorRef);
-
-		} catch (Exception e) {
-			System.out.println("\nimpossible");
-		}
+		/**
+		 * on se rend compte que cretains acteurs n'ont pas l'informations sur
+		 * l'ajout de noeud =====> STABILISATION!
+		 */
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor190);
+		System.out.println(actor207);
 
 	}
 
 	public static void removeActor_from_chord(int value_key, int num_actor) {
 		try {
 
-			ActorRef actor_to_remove = listActorRef.get(value_key);
+			TestActorRef<ChordActor> actor_to_remove_ref = listActorRef.get(value_key);
+			TestActorRef<ChordActor> actor_ref = listActorRef.get(num_actor);
 
-			ActorRef actor = listActorRef.get(num_actor);
-
-			if (actor_to_remove != null && actor != null) {
-				// System.out.println("les noeuds existent");
+			if (actor_to_remove_ref != null && actor_ref != null) {
+				System.out.println("Suppression d'acteur");
 
 				// creation du message de suppression
-				RemoveMsg remove = new RemoveMsg(new Key(value_key), actor_to_remove);
+				RemoveMsg remove = new RemoveMsg(new Key(value_key), actor_to_remove_ref);
 
 				// suppression du noeud par le biais d'un autre acteur
-				actor.tell(remove, actor_to_remove);
+				actor_ref.tell(remove, actor_to_remove_ref);
 
 				// ajout dans la liste des actorRef
 				listActorRef.remove(value_key);
+
+				System.out.println("L'acteur " + value_key + " a été supprimé du réseau");
 
 				// System.out.println("\nL'acteur " + value_key + " a été ajouté
 				// au réseau par " + num_actor);
@@ -353,34 +239,238 @@ public class Main {
 
 		} catch (Exception e) {
 			System.out.println("\nErreur, recommencez l'ajout.");
-			addActor_to_chord(value_key, num_actor);
 		}
 
 	}
 
-	public static void menu() {
+	@Test
+	public void testRemove1() {
+		ChordActor actor0 = init_chord(0);
+		ChordActor actor15 = addActor_to_chord(15, 0);
+
+		System.out.println(actor0);
+
+		removeActor_from_chord(15, 0);
+
+		System.out.println(actor0);
+		FingerTable ft0 = actor0.getFinger();
+		// Test des referents de la FT
+		assertEquals(ft0.get(0).getSuccessor(), actor0);
+		assertEquals(ft0.get(1).getSuccessor(), actor0);
+		assertEquals(ft0.get(2).getSuccessor(), actor0);
+		assertEquals(ft0.get(3).getSuccessor(), actor0);
+		assertEquals(ft0.get(4).getSuccessor(), actor0);
+		assertEquals(ft0.get(5).getSuccessor(), actor0);
+		assertEquals(ft0.get(6).getSuccessor(), actor0);
+		assertEquals(ft0.get(7).getSuccessor(), actor0);
+
+		// Test du successor et predecessos
+		assertEquals(ft0.getSuccessor(), actor0);
+		assertNull(ft0.getPredecessor());
+	}
+
+	@Test
+	public void testRemove2() {
+		ChordActor actor0 = init_chord(0);
+		ChordActor actor15 = addActor_to_chord(15, 0);
+		ChordActor actor54 = addActor_to_chord(54, 15);
+
+		System.out.println(actor0);
+		System.out.println(actor15);
+		System.out.println(actor54);
+
+		removeActor_from_chord(15, 0);
+		// removeActor_from_chord(54, 0); pas possible car 0 n'a pas eu l'info
+		// comme quoi 54 est entré
+
+		System.out.println(actor0);
+	}
+
+	public ChordActor update_fingerTable(int value_key) {
 		try {
-			Thread.sleep(1500);
-			System.out.println("Menu: \n" + "- 1) Ajouter un acteur \n" + "- 2) Visualiser un acteur \n"
-					+ "- 3) Réinitialiser le système \n");
-			String nextIntString = sc.nextLine();
-			int choice = Integer.parseInt(nextIntString);
+			TestActorRef<ChordActor> actor_ref = listActorRef.get(value_key);
 
-			if (choice == 1) {
-				addActor_to_chord();
-			} else if (choice == 2) {
-				displayFingerTable();
-			} else if (choice == 3) {
-				init_chord();
-			} else {
-				System.out.println("Erreur de choix");
-				menu();
-			}
+			UpdateFingerMsg msg_update = new UpdateFingerMsg();
+
+			// l'acteur s'envoie un message à lui même
+			// pas très efficace...
+			actor_ref.tell(msg_update, actor_ref);
+
+			return actor_ref.underlyingActor();
+
 		} catch (Exception e) {
-			System.out.println("Erreur de choix");
-			menu();
+			System.out.println("Erreur");
+			return null;
 		}
+	}
 
+	@Test
+	public void testUpdate_fingerTable1() {
+		ChordActor actor0 = init_chord(0);
+		ChordActor actor15 = addActor_to_chord(15, 0);
+		ChordActor actor54 = addActor_to_chord(54, 15);
+
+		System.out.println(actor0);
+		System.out.println(actor15);
+		System.out.println(actor54);
+
+		update_fingerTable(0);
+		update_fingerTable(15);
+		update_fingerTable(54);
+
+		System.out.println(actor0);
+		System.out.println(actor15);
+		System.out.println(actor54);
+	}
+
+	@Test
+	public void testUpdate_fingerTable2() {
+		ChordActor actor207 = init_chord(207);
+		ChordActor actor0 = addActor_to_chord(0, 207);
+		ChordActor actor109 = addActor_to_chord(109, 0);
+		ChordActor actor190 = addActor_to_chord(190, 0);
+
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor190);
+		System.out.println(actor207);
+
+		// 109 et 207 ont une fingertable avec des erreurs
+
+		/**
+		 * stabilisation etape 1: update des fingertables
+		 */
+		update_fingerTable(0);
+		update_fingerTable(109);
+		update_fingerTable(190);
+		update_fingerTable(207);
+
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor190);
+		System.out.println(actor207);
+	}
+
+	public ChordActor update_successor_predecessor(int value_key) {
+		try {
+			TestActorRef<ChordActor> actor_ref = listActorRef.get(value_key);
+
+			/**
+			 * Mise à jour du predecessor
+			 */
+			UpdatePredecessorMsg msg_pred = new UpdatePredecessorMsg();
+
+			// l'acteur s'envoie un message à lui même
+			// pas très efficace...
+			actor_ref.tell(msg_pred, actor_ref);
+
+			/**
+			 * Mise à jour du successor
+			 */
+			UpdateSuccessorMsg msg_succ = new UpdateSuccessorMsg();
+
+			// l'acteur s'envoie un message à lui même
+			// pas très efficace...
+			actor_ref.tell(msg_succ, actor_ref);
+
+			return actor_ref.underlyingActor();
+
+		} catch (Exception e) {
+			System.out.println("Erreur");
+			return null;
+		}
+	}
+
+	@Test
+	public void testUpdate_predecessor_successor1() {
+		ChordActor actor207 = init_chord(207);
+		ChordActor actor0 = addActor_to_chord(0, 207);
+		ChordActor actor109 = addActor_to_chord(109, 0);
+		ChordActor actor190 = addActor_to_chord(190, 0);
+
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor190);
+		System.out.println(actor207);
+
+		// 109 et 207 ont une fingertable avec des erreurs
+
+		/**
+		 * On fait uniquement l'étape 2 pour voir et comprendre le mecanisme
+		 * stabilisation etape 2: update des fingertables
+		 */
+		update_successor_predecessor(0);
+		update_successor_predecessor(109);
+		update_successor_predecessor(190);
+		update_successor_predecessor(207);
+
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor190);
+		System.out.println(actor207);
+
+		FingerTable ft109 = actor109.getFinger();
+		assertEquals(ft109.getSuccessor(), actor190);
+		assertEquals(ft109.getPredecessor(), actor0);
+
+		FingerTable ft207 = actor207.getFinger();
+		assertEquals(ft207.getSuccessor(), actor0);
+		assertEquals(ft207.getPredecessor(), actor190);
+	}
+
+
+	@Test
+	public void testStabilization1() {
+		ChordActor actor207 = init_chord(207);
+		ChordActor actor0 = addActor_to_chord(0, 207);
+		ChordActor actor109 = addActor_to_chord(109, 0);
+		ChordActor actor190 = addActor_to_chord(190, 0);
+		ChordActor actor110 = addActor_to_chord(110, 207);
+
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor110);
+		System.out.println(actor190);
+		System.out.println(actor207);
+
+		// 109 et 207 ont une fingertable avec des erreurs
+
+		/**
+		 * stabilisation etape 1: update des successors / predecessors
+		 */
+		
+		update_successor_predecessor(0);
+		update_successor_predecessor(109);
+		update_successor_predecessor(110);
+		update_successor_predecessor(190);
+		update_successor_predecessor(207);
+
+
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor110);
+		System.out.println(actor190);
+		System.out.println(actor207);
+		
+		
+		/**
+		 * stabilisation etape 2: update des fingertables
+		 */
+		update_fingerTable(0);
+		update_fingerTable(109);
+		update_fingerTable(110);
+		update_fingerTable(190);
+		update_fingerTable(207);
+
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor110);
+		System.out.println(actor190);
+		System.out.println(actor207);
+		
+		//faire test avec FT110
+
+		
 	}
 
 }
