@@ -251,7 +251,7 @@ public class ChordMainTestU {
 
 	}
 
-	/**
+	/** IL EST NORMAL QUE LE TEST SOIT FAUX
 	 * Toujours le ême réseau mais on ajoute les chordactor d'une autre facon On
 	 * obtient pas la table attendue ====> cela est du au fait que l'étape de
 	 * stabilisation doit tourné en tache de fond et doit être tout le temps
@@ -418,6 +418,79 @@ public class ChordMainTestU {
 		// Test du successor et predecessos
 		assertEquals(ft190.getSuccessor(), actor207);
 		assertEquals(ft190.getPredecessor(), actor110);
+	}
+	
+	/**
+	 * Toujours le même type de réseau mais on supprime plusieurs chordactor
+	 */
+	@Test
+	public void testRemove2() {
+		ChordActor actor0 = chord.init_chord(0);
+		ChordActor actor109 = chord.addActor_to_chord(109, 0);
+		chord.stabilization();
+		ChordActor actor190 = chord.addActor_to_chord(190, 0);
+		chord.stabilization();
+		ChordActor actor110 = chord.addActor_to_chord(110,109);
+		chord.stabilization();
+		ChordActor actor207 = chord.addActor_to_chord(207, 190);
+
+		// VISUALISATON sans stabilisation
+		System.out.println(actor0);
+		System.out.println(actor109);
+		System.out.println(actor110);
+		System.out.println(actor190);
+		System.out.println(actor207);
+
+		/**
+		 * STABILISATION
+		 */
+		chord.stabilization();
+
+		// VISUALISATON
+		System.out.println(actor0);
+		System.out.println(actor110);
+		System.out.println(actor109);
+		System.out.println(actor190);
+		System.out.println(actor207);
+
+		chord.removeActor_from_chord(110, 109);
+		chord.stabilization();
+		chord.removeActor_from_chord(109, 190);
+		chord.stabilization();
+
+		/**
+		 * On fait des tests uniquement sur le chordactor dont les références
+		 * sont les plus complexes (FT et successor/predecessor
+		 */
+
+		System.out.println(actor190);
+		FingerTable ft190 = actor190.getFinger();
+		// Test des referents de la FT
+		assertEquals(ft190.get(0).getSuccessor(), actor190);
+		assertEquals(ft190.get(1).getSuccessor(), actor190);
+		assertEquals(ft190.get(2).getSuccessor(), actor190);
+		assertEquals(ft190.get(3).getSuccessor(), actor190);
+		assertEquals(ft190.get(4).getSuccessor(), actor207);
+		assertEquals(ft190.get(5).getSuccessor(), actor207);
+		assertEquals(ft190.get(6).getSuccessor(), actor0);
+		assertEquals(ft190.get(7).getSuccessor(), actor0);
+
+		// Test du successor et predecessos
+		assertEquals(ft190.getSuccessor(), actor207);
+		assertEquals(ft190.getPredecessor(), actor110);
+	}
+	
+	/**
+	 * Toujours le même type de réseau mais on supprime plusieurs chordactor
+	 */
+	@Test
+	public void testRemove3() {
+		ChordActor actor5 = chord.init_chord(5);
+		ChordActor actor4 = chord.addActor_to_chord(4, 5);
+		chord.stabilization();
+		
+		chord.removeActor_from_chord(4, 5);
+		System.out.println(4);
 	}
 
 

@@ -249,7 +249,9 @@ public class ChordMain {
 		}
 	}
 
-	/** Ajout d'un chordactor au réseau et stabilisation.
+	/**
+	 * Ajout d'un chordactor au réseau et stabilisation.
+	 * 
 	 * @param value_key
 	 * @param from
 	 */
@@ -258,13 +260,75 @@ public class ChordMain {
 		this.stabilization();
 	}
 
-	/** Suppression d'un chordactor du réseau.
+	/**
+	 * Suppression d'un chordactor du réseau.
+	 * 
 	 * @param value_key
 	 * @param from
 	 */
 	public void removeActor_and_stabilization(int value_key, int from) {
 		this.removeActor_from_chord(value_key, from);
 		this.stabilization();
+	}
+
+	/**
+	 * Menu pour initialiser, ajouter, supprimer à sa guise
+	 * 
+	 */
+	public void menu() {
+		try {
+			System.out.println("\n1) (Re)-Initialiser le réseau\n" + "2) Ajouter un chordactor\n"
+					+ "3) Supprimer un chordactor\n" + "4) Voir la fingertable d'un chordactor\n"
+					+ "5) Voir les fingertables des chordactors du réseau");
+			int choix = Integer.parseInt(sc.nextLine());
+
+			if (choix == 1) {
+				System.out.println("Taper une key pour le chordactor entre 0 et 2⁸-1\n");
+				int value = Integer.parseInt(sc.nextLine());
+				init_chord(value);
+				menu();
+			} else if (choix == 2) {
+				System.out.println("Taper une key pour le nouveau chordactor\n");
+				int value = Integer.parseInt(sc.nextLine());
+				System.out.println("Taper la key d'un chordactor déjà présent dans le réseau\n");
+				int from = Integer.parseInt(sc.nextLine());
+				addActor_and_stabilization(value, from);
+				menu();
+			} else if (choix == 3) {
+				System.out.println("Taper la key du chordactor à supprimer\n");
+				int value = Integer.parseInt(sc.nextLine());
+				System.out.println("Taper la key d'un chordactor déjà présent dans le réseau\n");
+				int from = Integer.parseInt(sc.nextLine());
+				removeActor_and_stabilization(value, from);
+				menu();
+			} else if (choix == 5) {
+				for (TestActorRef<ChordActor> actor_ref : listActorRef.values()) {
+					ChordActor actor = actor_ref.underlyingActor();
+					System.out.println(actor);
+				}
+				menu();
+			} else if (choix == 4) {
+				System.out.println("Taper la key du chordactor\n");
+				int value = Integer.parseInt(sc.nextLine());
+				TestActorRef<ChordActor> actor_ref = listActorRef.get(value);
+				ChordActor actor = actor_ref.underlyingActor();
+				System.out.println(actor);
+				menu();
+			} else {
+				System.out.println("Erreur.");
+				menu();
+			}
+		} catch (Exception e) {
+			System.out.println("Erreur. catch");
+			menu();
+		}
+
+	}
+
+	public static void main(String[] args) {
+		System.out.println("Bienvenue");
+		ChordMain chord_main = new ChordMain();
+		chord_main.menu();
 	}
 
 }
