@@ -1,4 +1,4 @@
-package protocol;
+package message;
 
 public class UpdateSuccessorMsg extends ChordMessage {
 

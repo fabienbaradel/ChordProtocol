@@ -1,10 +1,10 @@
-package protocol;
+package message;
 
 import core.Key;
 
 public class PredecessorMsg extends ChordMessage {
 
-	Key key;
+	public Key key;
 
 	public PredecessorMsg(Key key) {
 		super();

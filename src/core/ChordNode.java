@@ -1,26 +1,37 @@
 package core;
 
 import akka.actor.ActorRef;
-import protocol.ChordMessage;
+import message.ChordMessage;
 
+/**
+ * Un ChordNode est constitué d'une clé Key unique et d'une référent à un Actor
+ * @author fabien
+ *
+ */
 public class ChordNode implements KeyRoutable {
 	
 	private final Key key;
 	private ActorRef actorRef=null;
 
 
-	//constructon d'un chordnode pour les tests de la fingertable
+	/** Constructeur d'un ChordNode pour les tests U de la FingerTable
+	 * @param i
+	 */
 	public ChordNode(int i) {
 		this.key = new Key(i);
 	}
 	
-	//constructeur pour la realisation du protocle CHORD
+	
+	/** Construction d'une chordnode pour un ChordActor et la réalisation du protocole Chord
+	 * @param k
+	 * @param actR
+	 */
 	public ChordNode(Key k, ActorRef actR) {
 		this.key = k;
 		actorRef = actR;
 	}
 
-	// on ne compare pas les references! unqiuement la key!!!
+	// on ne compare pas les references! uniquement les key
 	@Override
 	public int compareTo(KeyRoutable arg0) {
 		return  this.key.compareTo(arg0.getKey()) ;

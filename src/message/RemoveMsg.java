@@ -1,12 +1,12 @@
-package protocol;
+package message;
 
 import akka.actor.ActorRef;
 import core.Key;
 
 public class RemoveMsg extends ChordMessage{
 
-	Key key;
-	ActorRef actorRef;
+	public Key key;
+	public ActorRef actorRef;
 	
 	public RemoveMsg (Key k, ActorRef a){
 		key = k;

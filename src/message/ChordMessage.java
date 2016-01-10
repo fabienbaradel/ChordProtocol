@@ -1,4 +1,4 @@
-package protocol;
+package message;
 
 import akka.actor.ActorRef;
 import core.Key;

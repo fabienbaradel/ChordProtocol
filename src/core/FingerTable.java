@@ -4,6 +4,14 @@ import java.util.ArrayList;
 
 import akka.actor.ActorRef;
 
+/**
+ * Une fingertable est associée à une clé k et possède une liste de
+ * FingerTablEntry Pour facilité le travail de codage du protocole, on a ajouté
+ * un chordNode comme attribut de la FingerTable.
+ * 
+ * @author fabien
+ *
+ */
 public class FingerTable {
 
 	Key k;
@@ -27,6 +35,13 @@ public class FingerTable {
 		predecessor = null;
 	}
 
+	/**
+	 * Constructeur d'une fingertable à partir d'une autre fingertable et d'un
+	 * actorref
+	 * 
+	 * @param actorRef
+	 * @param finger2
+	 */
 	public FingerTable(ActorRef actorRef, FingerTable finger2) {
 		k = finger2.k;
 		successor = finger2.successor;
@@ -36,75 +51,62 @@ public class FingerTable {
 		}
 	}
 
+	/**
+	 * Fonction pour accéder aux FingerTableEntry de la FingerTable
+	 * 
+	 * @param i
+	 * @return la ième FingerTableEntry de la fingertable
+	 */
 	public FingerTableEntry get(int i) {
 		return finger.get(i);
 	}
 
+	/**
+	 * Ajout d'un ChordNode dans la FingerTable -mise à jour des référents des
+	 * FingerTableEntry -mise à jour des successor et predecessor
+	 * 
+	 * @param c0
+	 *            le chordnode à ajouter
+	 */
 	public void add(ChordNode c0) {
 		if (c0.getKey().compareTo(k) != 0) {
-			// recherche de l'intervalle auquel appartient le c0 dans la
-			// fingertable de this.
+			/*
+			 * recherche de l'intervalle auquel appartient le c0 dans la
+			 * fingertable de this.
+			 */
 			int i = 0;
 			while (finger.get(i).inRange(c0.getKey()) != 0) {
 				i++;
 			}
 
-			// si le chord node est inférieur à la réference de la
-			// fingertable_entry alors on
+			/*
+			 * si le chord node est inférieur à la réference de la
+			 * fingertable_entry
+			 */
 			if (isCloserThanRef(i, c0)) {
 				finger.get(i).add(c0);
-				// if (i < 8) {
-				// System.out.println(i + ": " + c0 + ", [" +
-				// finger.get(i).getLower_band() + ":"
-				// + finger.get(i).getUpper_band() + "] =>" +
-				// finger.get(i).getSuccessor() + ":"
-				// +
-				// finger.get(i).inRange(finger.get(i).getSuccessor().getKey())
-				// + " /1st");
-				// }
 
 				int j = i + 1;
 
-				// tant que c0 est inférieur au succesor des fingertable_entry à
-				// partir de 1, on le met en ref
-				// on regarde si les ref sont à l'interieur des intervalles
-				// if (j < 8) {
-				// System.out.println(j + ": " + c0 + ", [" +
-				// finger.get(j).getLower_band() + ":"
-				// + finger.get(j).getUpper_band() + "] =>" +
-				// finger.get(j).getSuccessor() + ":"
-				// +
-				// finger.get(j).inRange(finger.get(j).getSuccessor().getKey())
-				// + " /2nd test");
-				// }
-				while (j < Key.ENTRIES && finger.get(j).inRange(finger.get(j).getSuccessor().getKey()) != 0) {// c0.compareTo(finger.get(j).getSuccessor())
-																												// ==
-																												// 1){
+				/*
+				 * tant que c0 est inférieur au référent des fingertable_entry à
+				 * partir de 1, on le met en reférent
+				 */
+				while (j < Key.ENTRIES && finger.get(j).inRange(finger.get(j).getSuccessor().getKey()) != 0) {
 					// si le ref et c0 à mere sont avant l'intervalle
 					if (finger.get(j).inRange(finger.get(j).getSuccessor().getKey()) == -1
 							&& finger.get(j).inRange(c0.getKey()) == -1) {
-						// System.out.println("les deux à -1");
-						// on met c0 uniquement si il est plus grand que
-						// l'actuel ref
+						/*
+						 * on met c0 uniquement si il est plus grand que
+						 * l'actuel ref
+						 */
 						if (!isCloserThanRef(j, c0)) {
-							// System.out.println("special one " + c0 + "/" +
-							// finger.get(j).getSuccessor() + "=>"
-							// + c0.compareTo(finger.get(j).getSuccessor()));
 							finger.get(j).add(c0);
 						}
 					} else {
 						finger.get(j).add(c0);
 					}
 					j++;
-					// if (j < 8) {
-					// System.out.println(j + ": " + c0 + ", [" +
-					// finger.get(j).getLower_band() + ":"
-					// + finger.get(j).getUpper_band() + "] =>" +
-					// finger.get(j).getSuccessor() + ":"
-					// +
-					// finger.get(j).inRange(finger.get(j).getSuccessor().getKey())
-					// + " while!");
-					// }
 				}
 
 			}
@@ -116,6 +118,12 @@ public class FingerTable {
 
 	}
 
+	/**
+	 * Mise à jour du successor lors de lajout d'un ChordNode
+	 * 
+	 * @param c0
+	 *            le chordnode ajouté
+	 */
 	private void update_successor_add(ChordNode c0) {
 		// si le successeur est lui meme alors on change
 		if (successor.getKey().compareTo(k) == 0) {
@@ -129,6 +137,13 @@ public class FingerTable {
 		}
 	}
 
+	/**
+	 * Calcul la distance entre c0 et la Key de la fingertable si c0 pris comme
+	 * successor
+	 * 
+	 * @param c0
+	 * @return une distance
+	 */
 	private int distanceAsSuccessorFromKey(ChordNode c0) {
 		int dist = 0;
 		// cas simple
@@ -142,6 +157,12 @@ public class FingerTable {
 		return dist;
 	}
 
+	/**
+	 * Mise à jour du predecessor lors de lajout d'un ChordNode
+	 * 
+	 * @param c0
+	 *            le chordnode ajouté
+	 */
 	private void update_predecessor_add(ChordNode c0) {
 		if (predecessor == null) {
 			predecessor = c0;
@@ -152,6 +173,14 @@ public class FingerTable {
 		}
 	}
 
+	/**
+	 * Calcul de la distance entre un chordnode (pris potentiellement comme
+	 * predecessor) et la Key k de la fingertable
+	 * 
+	 * @param c0
+	 *            le chordnode qui peut etre predecessor
+	 * @return une distance
+	 */
 	private int distanceAsPredecessorFromKey(ChordNode c0) {
 		int dist = 0;
 		// cas simple
@@ -165,6 +194,12 @@ public class FingerTable {
 		return dist;
 	}
 
+	/**
+	 * Mise à jour du successor lors de la suppression d'un ChordNode
+	 * 
+	 * @param c0
+	 *            le chordnode enlevé
+	 */
 	private void update_successor_remove(ChordNode c0) {
 		if (successor.compareTo(c0) == 0) {
 			// recherche du nouveau successor
@@ -182,7 +217,8 @@ public class FingerTable {
 
 	private void update_predecessor_remove(ChordNode c0) {
 		if (predecessor != null && predecessor.compareTo(c0) == 0) {
-			// recherche du nouveau successor
+			
+			// recherche du nouveau predecessor
 			int i = Key.ENTRIES - 1;
 			while (i >= 0 && finger.get(i).getSuccessor().getKey() == k) {
 				i--;
@@ -194,9 +230,11 @@ public class FingerTable {
 			}
 		}
 
-		// si on supprime le dernier noeud qu'il y avait dans la fingertable
-		// alors on remet comme à la base le predecessor à null
-		if (predecessor!= null && predecessor.getKey().compareTo(k) == 0) {
+		/*
+		 * si on supprime le dernier noeud qu'il y avait dans la fingertable
+		 * alors on remet comme à la base le predecessor à null
+		 */
+		if (predecessor != null && predecessor.getKey().compareTo(k) == 0) {
 			predecessor = null;
 		}
 	}
@@ -214,10 +252,6 @@ public class FingerTable {
 	 */
 	public boolean isCloserThanRef(int i, ChordNode c0) {
 		boolean resp = false;
-		// System.out.println("distance jusqu'au chornode
-		// "+distanceFromLowerBand(i, c0));
-		// System.out.println("distance jusqu'au neoud ref
-		// "+distanceFromLowerBand(i, finger.get(i).getSuccessor()));
 		if (distanceFromLowerBand(i, c0) < distanceFromLowerBand(i, finger.get(i).getSuccessor())) {
 			resp = true;
 		}
@@ -261,8 +295,7 @@ public class FingerTable {
 	 * @return TRUE renvoie la ligne de la fingertable, FALSE sinon renvoie -1
 	 */
 	public int contains(ChordNode c0) {
-		// on recherche si c0 est l'une de nos 8 references (regarder le
-		// predecessro aussi?!)
+		// on recherche si c0 est l'une de nos 8 references
 		for (int i = 0; i < Key.ENTRIES; i++) {
 			if (finger.get(i).getSuccessor().compareTo(c0) == 0) {
 				return (int) i;
@@ -275,7 +308,12 @@ public class FingerTable {
 		return successor;
 	}
 
-	// pas possible de se remove de sa table!!!
+	
+	/** Suppression d'un ChordNode
+	 * -mise à jour des référents des FingerTableEntry
+	 * -mise ç jour des successor et predecessor
+	 * @param c0 le chordnode que l'on souhaite enlever dans le système
+	 */
 	public void remove(ChordNode c0) {
 
 		// etape 1: Retrouver les fingertableentry avec c0 comme reference
@@ -290,16 +328,13 @@ public class FingerTable {
 		}
 		j = j - 1;
 
-		// System.out.println("["+i+","+j+"]");
 		// les lignes i à j doivent trouver un nouveau referent
 		for (int k = j; k >= i; k--) {
 			if (j == (Key.ENTRIES - 1)) {
 				finger.get(k).add(finger.get(i - 1).getSuccessor());
 			} else if (finger.get(k).inRange(finger.get(j + 1).getSuccessor().getKey()) == 0) {
 				finger.get(k).add(finger.get(j + 1).getSuccessor());
-			} else {// if
-					// (finger.get(k).inRange(finger.get(j+1).getSuccessor().getKey())
-					// == 1){
+			} else {
 				finger.get(k).add(finger.get(i - 1).getSuccessor());
 			}
 		}
@@ -311,17 +346,19 @@ public class FingerTable {
 	}
 
 	/**
-	 * cherche le referent du KeyRoutable k2
+	 * Cherche le référent du KeyRoutable k2
 	 * 
-	 * @param k2
+	 * @param k2 la Key que l'on souhaite retrouver
 	 * @return
 	 */
 	public ChordNode lookup(Key k2) {
 		ChordNode c;
+		// k2 est la clé associée à la FingerTable
 		if (k2.compareTo(k) == 0) {
-			// System.out.println("sur lui meme "+);
 			c = cn;
-		} else {
+		}
+		// on renvoie le reférent de l'intervalle où k2 est compris dans la fingertable
+		else {
 			int i = 0;
 			while (i < Key.ENTRIES && finger.get(i).inRange(k2) != 0) {
 				i++;

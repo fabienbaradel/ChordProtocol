@@ -1,4 +1,4 @@
-package protocol;
+package message;
 
 import akka.actor.ActorRef;
 import core.Key;
@@ -10,8 +10,8 @@ public class LookupRefReplyMsg {
 		this.actorRef = actorRef;
 		this.key = key;
 	}
-	ActorRef actorRef;
-	Key key;
+	public ActorRef actorRef;
+	public Key key;
 	
 
 }

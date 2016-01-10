@@ -5,6 +5,12 @@ import java.math.BigInteger;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 
+/**
+ * Class Key
+ * Une Key possède une valeur comme attribut qui peut aller de 0 à 2⁸-1
+ * @author fabien
+ *
+ */
 public class Key implements Comparable<Key>, Serializable {
 
 	/**
@@ -38,7 +44,6 @@ public class Key implements Comparable<Key>, Serializable {
 	@Override
 	public String toString() {
 		return this.value.toString();
-//		 return Integer.toString(this.value, 2);
 	}
 	
 }

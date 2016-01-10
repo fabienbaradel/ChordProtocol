@@ -15,7 +15,7 @@ public class FingerTableEntryTestU {
 	public void testInRange() {
 		ChordNode c = new ChordNode(35);
 		FingerTableEntry ftelm = new FingerTableEntry(0, c, c);
-		assertEquals(ftelm.inRange(new Key(32)),1); //???!!! pas égale à -1 par rapport à la définition de ma méthode
+		assertEquals(ftelm.inRange(new Key(32)),1);
 		assertEquals(ftelm.inRange(new Key(36)),0);
 		assertEquals(ftelm.inRange(new Key(532)),1);
 	}
@@ -67,7 +67,7 @@ public class FingerTableEntryTestU {
 		FingerTableEntry ftelm = new FingerTableEntry(0, chord, chord);
 		ftelm.add(c4);
 		System.out.println(ftelm);
-		assertEquals(c4,ftelm.getSuccessor()); //!!!???chord avant mais egal à c4 car on ajoute un chordnode qu est un nouveau ref
+		assertEquals(c4,ftelm.getSuccessor());
 	}
 	
 	@Test 

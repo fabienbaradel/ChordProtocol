@@ -11,12 +11,36 @@ import core.ChordNode;
 import core.FingerTable;
 import core.Key;
 import core.KeyRoutable;
+import message.AddActorMsg;
+import message.DisplayFTMsg;
+import message.JoinMsg;
+import message.JoinReplyMsg;
+import message.LookupRefMsg;
+import message.LookupRefReplyMsg;
+import message.PredecessorMsg;
+import message.RemoveMsg;
+import message.SuccessorMsg;
+import message.UpdateFingerMsg;
+import message.UpdatePredecessorMsg;
+import message.UpdateSuccessorMsg;
 
+/**
+ * Classe de base de la mise en place du protcole Un ChordActor possède sa clé
+ * key et un fingertable d'après sa clé Un chordActor est unique
+ * 
+ * @author fabien
+ *
+ */
 public class ChordActor extends UntypedActor implements KeyRoutable {
 
 	private FingerTable finger;
 	public Key key;
 
+	/**
+	 * On construit un chordactor à partir d'une Key
+	 * 
+	 * @param k
+	 */
 	public ChordActor(Key k) {
 		key = k;
 		finger = new FingerTable(new ChordNode(k, this.self()));
@@ -27,8 +51,17 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 		return key;
 	}
 
+	/*
+	 * Descriptifs des actions possibles pour un ChordActor en fonction du type
+	 * de messaeg qu'il reçoit (non-Javadoc)
+	 * 
+	 * @see akka.actor.UntypedActor#onReceive(java.lang.Object)
+	 */
 	@Override
 	public void onReceive(Object msg) throws Exception {
+		/**
+		 * Actions lors d'un l'ajout d'un chordactor dasn le système
+		 */
 		if (msg instanceof JoinMsg) {
 			JoinMsg joinMsg = (JoinMsg) msg;
 			System.out.println("Ajout de l'acteur " + joinMsg.key + ": on passe par l'acteur " + key);
@@ -39,11 +72,11 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 			System.out.println("L'acteur " + joinReplyMsg.key + " renvoie sa FT à " + key);
 			this.handleJoinReplyMsg(joinReplyMsg);
 
+			/**
+			 * Messages lors de la recherche du référent d'une kEY
+			 */
 		} else if (msg instanceof LookupRefMsg) {
 			LookupRefMsg lookupRef = (LookupRefMsg) msg;
-			// System.out.println(key + " cherche " + lookupRef.key_to_lookup +
-			// " pour la mise à jour de la FT de "
-			// + lookupRef.key_newActor);
 			this.handleLookupRef(lookupRef);
 
 		} else if (msg instanceof LookupRefReplyMsg) {
@@ -52,6 +85,9 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 
 		}
 
+		/**
+		 * Suppression d'un actor du système
+		 */
 		else if (msg instanceof RemoveMsg) {
 			RemoveMsg remove_msg = (RemoveMsg) msg;
 			System.out.println(remove_msg.key + " souhaite s'enlever du réseau et passe par " + key);
@@ -62,43 +98,237 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 			System.out.println(this.toString());
 		}
 
+		/**
+		 * Messages issus de l'étape de stabilisation du système
+		 */
 		else if (msg instanceof UpdateFingerMsg) {
 			// System.out.println(key + " recoit un lookup reply");
 			update_finger();
 		}
 
 		else if (msg instanceof UpdateSuccessorMsg) {
-			System.out.println("Mise à jour du successor de "+key);
+			System.out.println("Mise à jour du successor de " + key);
 			update_successor();
 		}
 
 		else if (msg instanceof SuccessorMsg) {
-			// System.out.println(key + " recoit un lookup reply");
 			isMyPredecessor((SuccessorMsg) msg);
 		}
 
 		else if (msg instanceof AddActorMsg) {
-			// System.out.println(key + " recoit un lookup reply");
 			this.handleAddActor((AddActorMsg) msg);
 		}
 
 		else if (msg instanceof UpdatePredecessorMsg) {
-			System.out.println("Mise à jour du predecessor de "+key);
+			System.out.println("Mise à jour du predecessor de " + key);
 			update_predecessor();
 		}
 
 		else if (msg instanceof PredecessorMsg) {
-			// System.out.println(key + " recoit un lookup reply");
 			isMySuccessor((PredecessorMsg) msg);
 		}
 
 	}
 
-	// regarde si son successor est celuiq ue lui envoie un message, sinon
-	// renvoie un messaeg à sender avec son predecessro
+	///////////////////////////////////////////////////
+	////// AJOUT D'UN CHORDACTOR AU SYSTEME ///////////
+	///////////////////////////////////////////////////
+
+	/**
+	 * Gestion lors de la reception d'un message d'ajout d'un chordactor
+	 * 
+	 * @param msg
+	 */
+	private void handleJoinMsg(JoinMsg msg) {
+		Key k = msg.getKey();
+
+		// on fait une copie de la fingertable de this
+		FingerTable fingerToForward = new FingerTable(this.self(), finger);
+
+		/*
+		 * ajout du nouveau neoud dans la fingertable de this pour qu'elle soit
+		 * à jours
+		 */
+		finger.add(new ChordNode(msg.key, msg.actorRef));
+
+		ChordNode n = finger.lookup(k); // renvoie le chordnode pour insérer k
+
+		/*
+		 * si c'est lui le responsable de l'intervalle alors on crée la table de
+		 * k ou si le responsable de l'intervalle est le noeud à ajouter, on
+		 * envoie la FT de this
+		 */
+		if (n.getKey().equals(this.key) || n.getKey().equals(msg.key)) {
+			join(msg, fingerToForward);
+		}
+		// autrement on forward le msg
+		else {
+			n.getActorRef().tell(msg, this.getSelf());
+		}
+	}
+
+	/**
+	 * On s'occupe de l'ajout du chordnode dont les infos sont dans le msg On
+	 * crée un message avec sa fingertable selon son référent et on lui envoie
+	 * 
+	 * @param msg
+	 *            infos du chordactor à ajouter au système
+	 * @param fingerToForward
+	 *            fingertable du nouveau chordnode d'apres son référent
+	 */
+	private void join(JoinMsg msg, FingerTable fingerToForward) {
+		// son successor lui donne toute sa fingertable
+
+		/*
+		 * on met la fingertable de l'actorref dans le message, ainsi que sa key
+		 * et lui-même
+		 */
+		JoinReplyMsg joinReplyMsg = new JoinReplyMsg(fingerToForward, this.getSelf(), this.key);
+		ActorRef new_node = msg.actorRef;
+
+		// message joinreply incluant la fingertable de this selon son référent
+		new_node.tell(joinReplyMsg, this.getSelf());
+	}
+
+	/**
+	 * On s'occupe du message retour d'ajout au système Il ne reste pus qu'à
+	 * mettre à jour sa finger table
+	 * 
+	 * @param msg
+	 *            infos sur le chordactor qui s'ajoute au système (fingertable
+	 *            etc...)
+	 */
+	private void handleJoinReplyMsg(JoinReplyMsg msg) {
+		init_finger(msg);
+
+		// update de tous les referents de la finger table
+		update_finger();
+
+	}
+
+	/**
+	 * Initialisation de la fingertable en fonction de la fingertable donné dans
+	 * le message JoinReplyMsg
+	 * 
+	 * @param msg
+	 *            infos données par le référent du chordactor
+	 */
+	private void init_finger(JoinReplyMsg msg) {
+		System.out.println("Initialsation de la FT de " + key);
+		// ajout dans la fingertable du noeud qui vient de nous envoyer le
+		// joinreply
+		finger.add(new ChordNode(msg.key, msg.actRef));
+
+		// ajout des 8 noeuds references du successeur du nouveau neoud
+		// System.out.println("fingertable de " + msg.key);
+		for (int i = 0; i < Key.ENTRIES; i++) {
+			finger.add(msg.finger.get(i).getSuccessor());
+		}
+
+		// ajout du predecesseur de la table
+		if (msg.finger.getPredecessor() != null) {
+			finger.add(msg.finger.getPredecessor());
+		}
+
+	}
+
+	/**
+	 * Mise à jour des referents de la fingertable. Pour cela on effectue des
+	 * lookups sur la lower_band de chaque intervalle. Si on obtient un neoud
+	 * différent du référent actuel, alors on met à jour la ligne.
+	 */
+	private void update_finger() {
+		System.out.println("\nUpdate des référents la FT de " + key);
+		// lookup pour chaque ligne de la fingertable
+		for (int i = 0; i < Key.ENTRIES; i++) {
+			Key key_to_lookup = new Key(finger.get(i).getLower_band());
+			/**
+			 * creation du message lookup key: la clé de l'acteur qui met sa
+			 * table à jour key_to_lookup: la lower bande de la ligne i de la FT
+			 * BUT: on doit trouver le reférent de la lower band et l'ajouter à
+			 * la FT
+			 */
+			LookupRefMsg msg = new LookupRefMsg(key, this.self(), key_to_lookup);
+			handleLookupRef(msg);
+		}
+	}
+
+	/**
+	 * S'occupe lors de la récéption d'un message LookupRefMsg. But: recherche
+	 * le référent de la clé msg.ref_to_lookup. Soit il connait le référent soit
+	 * il transmet le message à un actor ayant plus d'informations dessus.
+	 * 
+	 * @param msg
+	 */
+	private void handleLookupRef(LookupRefMsg msg) {
+		/**
+		 * on regarde quel est le réferent de la clé key_to_lookup dans la FT
+		 */
+		ChordNode ref = this.finger.lookup(msg.key_to_lookup);
+
+		/**
+		 * si le referent est l'acteur de départ OU si le référent est this
+		 * (lui-même) OU que le referent est le sender et il est plus pres de la
+		 * lowerband
+		 */
+		if (ref.getKey().compareTo(key) == 0 || this.sender().compareTo(ref.getActorRef()) == 0
+				|| ref.getKey().compareTo(msg.key_ref) == 0) {
+			LookupRefReplyMsg msgReply = new LookupRefReplyMsg(ref.getActorRef(), key);
+			msg.actorRef.tell(msgReply, this.self());
+		} else {
+			// forward du message
+			ref.getActorRef().tell(msg, this.self());
+		}
+	}
+
+	private void handleLookupRefReplyMsg(LookupRefReplyMsg msg) {
+		ChordNode cn_to_add = new ChordNode(msg.key, msg.actorRef);
+		finger.add(cn_to_add);
+	}
+
+	///////////////////////////////////////////
+	////// SUPPRESSION DE CHORDACTOR //////////
+	///////////////////////////////////////////
+
+	/**
+	 * S'occupe de supprimer le chordactor dont les infos sont dans le RemoveMsg
+	 * 
+	 * @param msg
+	 *            infos de l'actor à supprimer
+	 */
+	private void handleRemove(RemoveMsg msg) {
+		/**
+		 * on regarde quel est le réferent de la clé key_to_lookup dans la FT
+		 */
+		ChordNode ref = this.finger.lookup(msg.key);
+
+		/**
+		 * si le referent est pas l'acteur this on passe le message
+		 */
+		if (ref.getKey().compareTo(key) == 0) {
+			// on sort l'acteur du système
+			finger = null;
+			key = null;
+		} else {
+			finger.remove(new ChordNode(msg.key, msg.actorRef));
+			ref.getActorRef().tell(msg, this.self());
+		}
+	}
+
+	/////////////////////////////////////////////
+	/////////////// STABILISATION ///////////////
+	/////////////////////////////////////////////
+
+	/**
+	 * Regarde si son successor est celui que lui envoie un message, sinon
+	 * renvoie un messaeg à sender avec son predecessor
+	 * 
+	 * @param msg
+	 *            contient la clé de celui qui nous envoie le message
+	 */
 	private void isMySuccessor(PredecessorMsg msg) {
 
-		// ajout de celui qui nous envoie un message dasn notre fingertable
+		// ajout de celui qui nous envoie un message dans notre fingertable
 		finger.add(new ChordNode(msg.key, this.sender()));
 
 		ActorRef my_successor = finger.getSuccessor().getActorRef();
@@ -108,7 +338,7 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 		 * l'ajoute à ma fingertable alors on envoie un message au sender en lui
 		 * disant d'ajouter mon successor
 		 * 
-		 * AUREMENT on ne renvoie pas de message pour confirmer que le
+		 * AUTREMENT on ne renvoie pas de message pour confirmer que le
 		 * predecessor est bon
 		 */
 		if (my_successor.compareTo(this.sender()) != 0) {
@@ -119,7 +349,7 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 	}
 
 	/**
-	 * envoie un message à son predecessor
+	 * envoie un message de type PredecessorMsg à son predecessor
 	 */
 	private void update_predecessor() {
 		PredecessorMsg msg = new PredecessorMsg(key);
@@ -129,13 +359,23 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 
 	}
 
-	// ajoute un acteur dans sa fingertable
+	/**
+	 * Ajoute un acteur dans sa fingertable
+	 * 
+	 * @param msg
+	 *            contient les paramètres pour ajouter un Actor càd sa référence
+	 *            et sa clé
+	 */
 	private void handleAddActor(AddActorMsg msg) {
 		finger.add(new ChordNode(msg.key, msg.actorRef));
 	}
 
-	// regarde si son predecessr est celuiq ue lui envoie un message, sinon
-	// renvoie un messaeg à sender avec son predecessro
+	/**
+	 * Regarde si son predecessor est celui que lui envoie un message, sinon
+	 * renvoie un message à sender avec son predecessor
+	 * 
+	 * @param msg
+	 */
 	private void isMyPredecessor(SuccessorMsg msg) {
 
 		// ajout de celui qui nous envoie un message dasn notre fingertable
@@ -159,7 +399,7 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 	}
 
 	/**
-	 * envoie un message à son successor
+	 * envoie un message de type SuccessorMsg à son successor
 	 */
 	private void update_successor() {
 		SuccessorMsg msg = new SuccessorMsg(key);
@@ -167,161 +407,6 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 		ActorRef successor_ref = finger.getSuccessor().getActorRef();
 		successor_ref.tell(msg, this.self());
 
-	}
-
-	private void handleRemove(RemoveMsg msg) {
-		// System.out.println("On s'occupe de supprimé " + msg.key);
-		/**
-		 * on regarde quel est le réferent de la clé key_to_lookup dans la FT
-		 */
-		ChordNode ref = this.finger.lookup(msg.key);
-		// System.out.println("on dit à "+ref.getActorRef()+" de chercher
-		// "+msg.key_to_lookup);
-
-		/**
-		 * si le referent est pas l'acteur this on passe le message
-		 */
-		if (ref.getKey().compareTo(key) == 0) {
-			// on sort l'acteur du système
-			finger = null;
-			key = null;
-		} else {
-			finger.remove(new ChordNode(msg.key, msg.actorRef));
-			ref.getActorRef().tell(msg, this.self());
-		}
-	}
-
-	/**
-	 * Gestion de l'ajout d'un chord node
-	 * 
-	 * @param msg
-	 */
-	private void handleJoinMsg(JoinMsg msg) {
-		Key k = msg.getKey();
-
-		// on fait une copie de la fingertable de this
-		FingerTable fingerToForward = new FingerTable(this.self(), finger);
-		// System.out.println(fingerToForward);
-
-		// ajout du nouveau neoud dans la fingertable de this pour qu'elle soit
-		// à jours
-		finger.add(new ChordNode(msg.key, msg.actorRef));
-
-		// System.out.println(finger);
-		ChordNode n = finger.lookup(k); // renvoie le chordnode pour insérer k
-		// System.out.println(n+" est referent");
-
-		// si c'est lui le responsable de l'intervalle alors on crée la table de
-		// k
-		// le responsable est this!
-		// ou si le responsable de l'intervalle est le noeud à ajouter, on
-		// envoie la FT de this
-		if (n.getKey().equals(this.key) || n.getKey().equals(msg.key)) {
-			join(msg, fingerToForward);
-		}
-		// autrement on forward le msg
-		else {
-			n.getActorRef().tell(msg, this.getSelf());
-		}
-	}
-
-	private void join(JoinMsg msg, FingerTable fingerToForward) {
-		// System.out.println(key + " est l'acteur qui doit s'occuper de l'ajout
-		// de " + msg.key);
-		// son successor lui donne toute sa table aisni que son predecessseur!!!
-
-		// on met la fingertable de l'actorref dans le message, ainsi que sa key
-		// et lui-même
-		// System.out.println("forward"+fingerToForward);
-		JoinReplyMsg joinReplyMsg = new JoinReplyMsg(fingerToForward, this.getSelf(), this.key);
-		ActorRef new_node = msg.actorRef;
-
-		// message joinreply avec la fingertable de this dedans
-		new_node.tell(joinReplyMsg, this.getSelf());
-	}
-
-	private void handleJoinReplyMsg(JoinReplyMsg msg) {
-		init_finger(msg);
-
-		// update de tous les referents de la finger table
-		update_finger();
-
-	}
-
-	private void init_finger(JoinReplyMsg msg) {
-		System.out.println("Initialsation de la FT de " + key);
-		// ajout dans la fingertable du noeud qui vient de nous envoyer le
-		// joinreply
-		finger.add(new ChordNode(msg.key, msg.actRef));
-
-		// ajout des 8 noeuds references du successeur du nouveau neoud
-		// System.out.println("fingertable de " + msg.key);
-		for (int i = 0; i < Key.ENTRIES; i++) {
-			finger.add(msg.finger.get(i).getSuccessor());
-		}
-
-		// ajout du predecesseur de la table
-		if (msg.finger.getPredecessor() != null) {
-			finger.add(msg.finger.getPredecessor());
-		}
-
-	}
-
-	/**
-	 * Mise à jour des referents de la fingertable Pour cela on effectue des
-	 * lookups sur le debut de chaque intervalle Si on obtient un neoud
-	 * différent du référent actuel, alors on met à jour la ligne
-	 */
-	private void update_finger() {
-		System.out.println("\nUpdate des référents la FT de " + key);
-		// lookup pour chaque ligne de la fingertable
-		for (int i = 0; i < Key.ENTRIES; i++) { /////// !!!!!!!!!?????????
-			Key key_to_lookup = new Key(finger.get(i).getLower_band());
-			// System.out.println("on cherche le referent de "+key_to_lookup);
-
-			/**
-			 * creation du message lookup key: la clé de l'acteur qui met sa
-			 * table à jour key_to_lookup: la lower bande de la ligne i de la FT
-			 * BUT: on doit trouver le reférent de la lower band et l'ajouter à
-			 * la FT
-			 */
-			// System.out.println("\nrow "+i);
-			LookupRefMsg msg = new LookupRefMsg(key, this.self(), key_to_lookup);
-			handleLookupRef(msg);
-		}
-	}
-
-	private void handleLookupRef(LookupRefMsg msg) {
-		// System.out.println(key+" lookupRef de " + msg.key_to_lookup);
-		// System.out.println("msg: acteur qui update "+msg.key_ref);
-		/**
-		 * on regarde quel est le réferent de la clé key_to_lookup dans la FT
-		 */
-		ChordNode ref = this.finger.lookup(msg.key_to_lookup);
-		// System.out.println("apres le lookup on trouve "+ref);
-		// System.out.println("on dit à "+ref.getActorRef()+" de chercher
-		// "+msg.key_to_lookup);
-
-		/**
-		 * si le referent est l'acteur de départ OU si le référent est this
-		 * (lui-même) OU que le referent est le sender et il est plus pres de la
-		 * lowerband
-		 */
-		if (ref.getKey().compareTo(key) == 0 || this.sender().compareTo(ref.getActorRef()) == 0
-				|| ref.getKey().compareTo(msg.key_ref) == 0) {
-			// System.out.println("renvoie à "+msg.key_ref+ " du referent
-			// "+key);
-			LookupRefReplyMsg msgReply = new LookupRefReplyMsg(ref.getActorRef(), key);
-			msg.actorRef.tell(msgReply, this.self());
-		} else {
-			// System.out.println("forward");
-			ref.getActorRef().tell(msg, this.self());
-		}
-	}
-
-	private void handleLookupRefReplyMsg(LookupRefReplyMsg msg) {
-		ChordNode cn_to_add = new ChordNode(msg.key, msg.actorRef);
-		finger.add(cn_to_add);
 	}
 
 	@Override
