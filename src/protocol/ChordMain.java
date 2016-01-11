@@ -4,7 +4,9 @@ import akka.actor.Actor;
 import akka.actor.ActorRef;
 import akka.actor.ActorSystem;
 import akka.actor.Props;
+import akka.actor.Terminated;
 import akka.actor.UntypedActor;
+import akka.actor.UntypedActorContext;
 import akka.testkit.TestActorRef;
 import core.ChordNode;
 import core.FingerTable;
@@ -38,7 +40,7 @@ import org.junit.Test;
 public class ChordMain {
 
 	final static ActorSystem system = ActorSystem.create("ProtocolChord");
-	public static TreeMap<Integer, TestActorRef<ChordActor>> listActorRef;
+	public TreeMap<Integer, TestActorRef<ChordActor>> listActorRef;
 	static Scanner sc = new Scanner(System.in);
 
 	/**
@@ -49,6 +51,7 @@ public class ChordMain {
 	 * @return le chordactor créé
 	 */
 	public ChordActor init_chord(int value_key) {
+
 		listActorRef = new TreeMap<Integer, TestActorRef<ChordActor>>();
 
 		ChordActor init_actor = create_chordActor(value_key);
@@ -108,6 +111,7 @@ public class ChordMain {
 			// le reseau
 			ar.tell(join, new_actor.getSelf());
 
+
 			System.out.println("\nL'acteur " + value_key + " a été ajouté au réseau par " + num_actor);
 
 			return new_actor;
@@ -119,56 +123,6 @@ public class ChordMain {
 
 	}
 
-	/**
-	 * On a fait le choix de passer par un chordactor quand un chordactor
-	 * souhaite se remover. Ce choix de passer par un chordactor pour en
-	 * supprimer un, permet de faire une mini étape de stabilization du système
-	 * en mettant à jour quelques fingertables. On fait aussi cela car on ne
-	 * s'est pas servie du watch et du messaeg TERMINATED dans l'implémentation
-	 * d'un chordactor. Sans ce passeg par un autre chordactor (et donc les
-	 * chordactor qui vont pointer sur lui), on aura surement des erreurs lors
-	 * de la stabilisation avec des pointeurs de référence à NULL.
-	 * 
-	 * @param value_key
-	 *            valeur de la clé du chordactor à supprimer
-	 * @param num_actor
-	 *            valeur de la clé du chordactor par lequel on veut remover un
-	 *            chordactor
-	 */
-	public void removeActor_from_chord(int value_key, int num_actor) {
-		try {
-
-			TestActorRef<ChordActor> actor_to_remove_ref = listActorRef.get(value_key);
-			TestActorRef<ChordActor> actor_ref = listActorRef.get(num_actor);
-
-			if (actor_to_remove_ref != null && actor_ref != null) {
-				System.out.println("Suppression d'acteur");
-
-				// creation du message de suppression
-				RemoveMsg remove = new RemoveMsg(new Key(value_key), actor_to_remove_ref);
-
-				// suppression du noeud par le biais d'un autre acteur
-				actor_ref.tell(remove, actor_to_remove_ref);
-
-				// ajout dans la liste des actorRef
-				listActorRef.remove(value_key);
-
-				System.out.println("L'acteur " + value_key + " a été supprimé du réseau");
-
-				// System.out.println("\nL'acteur " + value_key + " a été ajouté
-				// au réseau par " + num_actor);
-
-			} else {
-				System.out.println("\nNeoud inexistant, recommencez");
-				// retour au menu
-				this.addActor_to_chord(value_key, num_actor);
-			}
-
-		} catch (Exception e) {
-			System.out.println("\nErreur, recommencez l'ajout.");
-		}
-
-	}
 
 	/**
 	 * Mise à jour des référents de la FT d'un chordactor du système
@@ -266,8 +220,8 @@ public class ChordMain {
 	 * @param value_key
 	 * @param from
 	 */
-	public void removeActor_and_stabilization(int value_key, int from) {
-		this.removeActor_from_chord(value_key, from);
+	public void removeActor_and_stabilization(int value_key) {
+		this.removeActor_from_chord(value_key);
 		this.stabilization();
 	}
 
@@ -297,9 +251,7 @@ public class ChordMain {
 			} else if (choix == 3) {
 				System.out.println("Taper la key du chordactor à supprimer\n");
 				int value = Integer.parseInt(sc.nextLine());
-				System.out.println("Taper la key d'un chordactor déjà présent dans le réseau\n");
-				int from = Integer.parseInt(sc.nextLine());
-				removeActor_and_stabilization(value, from);
+				removeActor_and_stabilization(value);
 				menu();
 			} else if (choix == 5) {
 				for (TestActorRef<ChordActor> actor_ref : listActorRef.values()) {
@@ -331,4 +283,14 @@ public class ChordMain {
 		chord_main.menu();
 	}
 
+	public ChordActor removeActor_from_chord(int value_key) {
+		TestActorRef<ChordActor> actor_to_remove_ref = listActorRef.get(value_key);
+		
+		//envoie d'un message à lui mettre pour que l'acteur se kill
+		actor_to_remove_ref.tell(new KillActorMsg(), actor_to_remove_ref);
+		listActorRef.remove(value_key);
+
+		//pour mettre le chordactor supprimé du réseau à null
+		return null;
+	}
 }

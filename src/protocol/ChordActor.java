@@ -6,7 +6,9 @@ import org.hamcrest.core.IsInstanceOf;
 
 import akka.actor.ActorRef;
 import akka.actor.Props;
+import akka.actor.Terminated;
 import akka.actor.UntypedActor;
+import akka.testkit.TestActorRef;
 import core.ChordNode;
 import core.FingerTable;
 import core.Key;
@@ -24,6 +26,10 @@ import message.UpdateFingerMsg;
 import message.UpdatePredecessorMsg;
 import message.UpdateSuccessorMsg;
 
+//
+//CREER UNE FONCTION QUI WATCH TOUTES LES REFERENCES ET APRES L AJOUT ET APRES LA STABILISATION
+//
+//ET CREER UN METHODE UNWATCH POUR UNWATCHER TOUS LES ACTEURS (à faire avant un update) => pour ne pas avoir plein de watchs (trop de pointeurs, comme ca on a 9 watch max à chaque fois)
 /**
  * Classe de base de la mise en place du protcole Un ChordActor possède sa clé
  * key et un fingertable d'après sa clé Un chordActor est unique
@@ -44,6 +50,7 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 	public ChordActor(Key k) {
 		key = k;
 		finger = new FingerTable(new ChordNode(k, this.self()));
+
 	}
 
 	@Override
@@ -126,6 +133,42 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 
 		else if (msg instanceof PredecessorMsg) {
 			isMySuccessor((PredecessorMsg) msg);
+		} else if (msg instanceof KillActorMsg) {
+			context().stop(self());
+			System.out.println("l'actor " + key + " est stopé");
+
+		} else if (msg instanceof Terminated) {
+			System.out.println("Terminated dans " + key);
+			Terminated t = (Terminated) msg;
+			ActorRef actorRef_to_remove = t.getActor();
+
+			ChordNode cn_to_remove = null;
+			for (int i = 0; i < Key.ENTRIES; i++) {
+				if (finger.get(i).getSuccessor().getActorRef().compareTo(actorRef_to_remove) == 0) {
+					cn_to_remove = finger.get(i).getSuccessor();
+				}
+
+			}
+
+			// si le chordactor à supprimer est une référence alors on le
+			// supprime
+			if (cn_to_remove != null) {
+				System.out.println("remove: " + cn_to_remove);
+				finger.remove(cn_to_remove);
+			}
+
+			// si le ChordActor était le predecesseur on le remplace
+			System.out.println("ACTOR:" + key + " toRemove=" + cn_to_remove);// +",
+																				// predecessor"+finger.getPredecessor()+"
+																				// :
+																				// );
+			if (finger.getPredecessor() != null
+					&& finger.getPredecessor().getActorRef().compareTo(actorRef_to_remove) == 0) {
+				finger.setPredecessor(finger.get(7).getSuccessor());
+			}
+
+			// on lance l'étape de stabilisation ensuite avec la clase ChordMain
+
 		}
 
 	}
@@ -199,9 +242,13 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 	 *            etc...)
 	 */
 	private void handleJoinReplyMsg(JoinReplyMsg msg) {
+		// on enleve tous les chordactor vers lesquels on watch
+		unwatch_referencies();
+
 		init_finger(msg);
 
-		// update de tous les referents de la finger table
+		// update de tous les referents de la finger table et des chordactor
+		// vers lesquels on watch
 		update_finger();
 
 	}
@@ -223,11 +270,13 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 		// System.out.println("fingertable de " + msg.key);
 		for (int i = 0; i < Key.ENTRIES; i++) {
 			finger.add(msg.finger.get(i).getSuccessor());
+
 		}
 
 		// ajout du predecesseur de la table
 		if (msg.finger.getPredecessor() != null) {
 			finger.add(msg.finger.getPredecessor());
+
 		}
 
 	}
@@ -251,6 +300,9 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 			LookupRefMsg msg = new LookupRefMsg(key, this.self(), key_to_lookup);
 			handleLookupRef(msg);
 		}
+
+		// mise à jour des watch
+		watch_referencies();
 	}
 
 	/**
@@ -284,6 +336,9 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 	private void handleLookupRefReplyMsg(LookupRefReplyMsg msg) {
 		ChordNode cn_to_add = new ChordNode(msg.key, msg.actorRef);
 		finger.add(cn_to_add);
+
+		// ajout au context pour watch
+		context().watch(msg.actorRef);
 	}
 
 	///////////////////////////////////////////
@@ -352,10 +407,14 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 	 * envoie un message de type PredecessorMsg à son predecessor
 	 */
 	private void update_predecessor() {
+		unwatch_referencies();
+
 		PredecessorMsg msg = new PredecessorMsg(key);
 
-		ActorRef predecessor_ref = finger.getPredecessor().getActorRef();
-		predecessor_ref.tell(msg, this.self());
+		if (finger.getPredecessor() != null) {
+			ActorRef predecessor_ref = finger.getPredecessor().getActorRef();
+			predecessor_ref.tell(msg, this.self());
+		}
 
 	}
 
@@ -368,6 +427,9 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 	 */
 	private void handleAddActor(AddActorMsg msg) {
 		finger.add(new ChordNode(msg.key, msg.actorRef));
+
+		// mise à jour des chordactor à watcher
+		watch_referencies();
 	}
 
 	/**
@@ -381,19 +443,21 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 		// ajout de celui qui nous envoie un message dasn notre fingertable
 		finger.add(new ChordNode(msg.key, this.sender()));
 
-		ActorRef my_predecessor = finger.getPredecessor().getActorRef();
+		if (finger.getPredecessor() != null) {
+			ActorRef my_predecessor = finger.getPredecessor().getActorRef();
 
-		/**
-		 * si mon predecessor n'est pas celui qui m'envoie le message alors je
-		 * l'ajoute à ma fingertable alors on envoie un message au sender en lui
-		 * disant d'ajouter mon predecessor
-		 * 
-		 * AUREMENT on ne renvoie pas de message pour confirmer que le successor
-		 * est bon
-		 */
-		if (my_predecessor.compareTo(this.sender()) != 0) {
-			AddActorMsg resp_msg = new AddActorMsg(finger.getPredecessor().getKey(), my_predecessor);
-			this.sender().tell(resp_msg, this.self());
+			/**
+			 * si mon predecessor n'est pas celui qui m'envoie le message alors
+			 * je l'ajoute à ma fingertable alors on envoie un message au sender
+			 * en lui disant d'ajouter mon predecessor
+			 * 
+			 * AUREMENT on ne renvoie pas de message pour confirmer que le
+			 * successor est bon
+			 */
+			if (my_predecessor.compareTo(this.sender()) != 0) {
+				AddActorMsg resp_msg = new AddActorMsg(finger.getPredecessor().getKey(), my_predecessor);
+				this.sender().tell(resp_msg, this.self());
+			}
 		}
 
 	}
@@ -402,11 +466,50 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 	 * envoie un message de type SuccessorMsg à son successor
 	 */
 	private void update_successor() {
+		unwatch_referencies();
+
 		SuccessorMsg msg = new SuccessorMsg(key);
 
 		ActorRef successor_ref = finger.getSuccessor().getActorRef();
 		successor_ref.tell(msg, this.self());
 
+	}
+
+	//////////////////////////////////////////////////////
+	////////// WATCH ET UNWATCH DES REFERENTS ////////////
+	//////////////////////////////////////////////////////
+
+	/**
+	 * Permet de unwatcher toutes les references vers lesquels l'actor watch.
+	 * Cela permet d'optimiser notre algorithme pour qu'un chordactor pointe au
+	 * maximum vers 9 autres ChordActor.
+	 * 
+	 */
+	public void unwatch_referencies() {
+		for (int i = 0; i < Key.ENTRIES; i++) {
+			context().unwatch(finger.get(i).getSuccessor().getActorRef());
+		}
+
+		// unwatch predecessor
+		if (finger.getPredecessor() != null) {
+			context().unwatch(finger.getPredecessor().getActorRef());
+		}
+	}
+
+	/**
+	 * Permet de watcher toutes les références de la fingertable (au maximum 8 +
+	 * le predecessor = 9)
+	 * 
+	 */
+	public void watch_referencies() {
+		for (int i = 0; i < Key.ENTRIES; i++) {
+			context().watch(finger.get(i).getSuccessor().getActorRef());
+		}
+
+		// unwatch predecessor
+		if (finger.getPredecessor() != null) {
+			context().watch(finger.getPredecessor().getActorRef());
+		}
 	}
 
 	@Override
