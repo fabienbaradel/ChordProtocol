@@ -17,6 +17,7 @@ import message.AddActorMsg;
 import message.DisplayFTMsg;
 import message.JoinMsg;
 import message.JoinReplyMsg;
+import message.KillActorMsg;
 import message.LookupRefMsg;
 import message.LookupRefReplyMsg;
 import message.PredecessorMsg;
@@ -26,10 +27,7 @@ import message.UpdateFingerMsg;
 import message.UpdatePredecessorMsg;
 import message.UpdateSuccessorMsg;
 
-//
-//CREER UNE FONCTION QUI WATCH TOUTES LES REFERENCES ET APRES L AJOUT ET APRES LA STABILISATION
-//
-//ET CREER UN METHODE UNWATCH POUR UNWATCHER TOUS LES ACTEURS (à faire avant un update) => pour ne pas avoir plein de watchs (trop de pointeurs, comme ca on a 9 watch max à chaque fois)
+
 /**
  * Classe de base de la mise en place du protcole Un ChordActor possède sa clé
  * key et un fingertable d'après sa clé Un chordActor est unique
@@ -92,15 +90,7 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 
 		}
 
-		/**
-		 * Suppression d'un actor du système
-		 */
-		else if (msg instanceof RemoveMsg) {
-			RemoveMsg remove_msg = (RemoveMsg) msg;
-			System.out.println(remove_msg.key + " souhaite s'enlever du réseau et passe par " + key);
-			this.handleRemove(remove_msg);
-		}
-
+		
 		else if (msg instanceof DisplayFTMsg) {
 			System.out.println(this.toString());
 		}
@@ -133,45 +123,22 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 
 		else if (msg instanceof PredecessorMsg) {
 			isMySuccessor((PredecessorMsg) msg);
+			
+			/**
+			 * Suppression d'un actor du système
+			 */
 		} else if (msg instanceof KillActorMsg) {
 			context().stop(self());
 			System.out.println("l'actor " + key + " est stopé");
 
 		} else if (msg instanceof Terminated) {
-			System.out.println("Terminated dans " + key);
-			Terminated t = (Terminated) msg;
-			ActorRef actorRef_to_remove = t.getActor();
-
-			ChordNode cn_to_remove = null;
-			for (int i = 0; i < Key.ENTRIES; i++) {
-				if (finger.get(i).getSuccessor().getActorRef().compareTo(actorRef_to_remove) == 0) {
-					cn_to_remove = finger.get(i).getSuccessor();
-				}
-
-			}
-
-			// si le chordactor à supprimer est une référence alors on le
-			// supprime
-			if (cn_to_remove != null) {
-				System.out.println("remove: " + cn_to_remove);
-				finger.remove(cn_to_remove);
-			}
-
-			// si le ChordActor était le predecesseur on le remplace
-			System.out.println("ACTOR:" + key + " toRemove=" + cn_to_remove);// +",
-																				// predecessor"+finger.getPredecessor()+"
-																				// :
-																				// );
-			if (finger.getPredecessor() != null
-					&& finger.getPredecessor().getActorRef().compareTo(actorRef_to_remove) == 0) {
-				finger.setPredecessor(finger.get(7).getSuccessor());
-			}
-
-			// on lance l'étape de stabilisation ensuite avec la clase ChordMain
-
+			this.handleTerminated((Terminated)msg);
+			
 		}
 
 	}
+
+	
 
 	///////////////////////////////////////////////////
 	////// AJOUT D'UN CHORDACTOR AU SYSTEME ///////////
@@ -346,28 +313,42 @@ public class ChordActor extends UntypedActor implements KeyRoutable {
 	///////////////////////////////////////////
 
 	/**
-	 * S'occupe de supprimer le chordactor dont les infos sont dans le RemoveMsg
-	 * 
+	 * Action faite lorsqu'un ChordActor que l'on watch quitte le sytème
 	 * @param msg
-	 *            infos de l'actor à supprimer
 	 */
-	private void handleRemove(RemoveMsg msg) {
-		/**
-		 * on regarde quel est le réferent de la clé key_to_lookup dans la FT
-		 */
-		ChordNode ref = this.finger.lookup(msg.key);
+	private void handleTerminated(Terminated msg) {
+		System.out.println("Terminated dans " + key);
+		Terminated t = (Terminated) msg;
+		ActorRef actorRef_to_remove = t.getActor();
 
-		/**
-		 * si le referent est pas l'acteur this on passe le message
-		 */
-		if (ref.getKey().compareTo(key) == 0) {
-			// on sort l'acteur du système
-			finger = null;
-			key = null;
-		} else {
-			finger.remove(new ChordNode(msg.key, msg.actorRef));
-			ref.getActorRef().tell(msg, this.self());
+		ChordNode cn_to_remove = null;
+		for (int i = 0; i < Key.ENTRIES; i++) {
+			if (finger.get(i).getSuccessor().getActorRef().compareTo(actorRef_to_remove) == 0) {
+				cn_to_remove = finger.get(i).getSuccessor();
+			}
+
 		}
+
+		// si le chordactor à supprimer est une référence alors on le
+		// supprime
+		if (cn_to_remove != null) {
+			System.out.println("remove: " + cn_to_remove);
+			finger.remove(cn_to_remove);
+		}
+
+		// si le ChordActor était le predecesseur on le remplace
+		System.out.println("ACTOR:" + key + " toRemove=" + cn_to_remove);// +",
+																			// predecessor"+finger.getPredecessor()+"
+																			// :
+																			// );
+		if (finger.getPredecessor() != null
+				&& finger.getPredecessor().getActorRef().compareTo(actorRef_to_remove) == 0) {
+			finger.setPredecessor(finger.get(7).getSuccessor());
+		}
+
+		// on lance l'étape de stabilisation ensuite avec la clase ChordMain
+
+		
 	}
 
 	/////////////////////////////////////////////

@@ -14,6 +14,7 @@ import core.Key;
 import core.KeyRoutable;
 import message.DisplayFTMsg;
 import message.JoinMsg;
+import message.KillActorMsg;
 import message.PredecessorMsg;
 import message.RemoveMsg;
 import message.UpdateFingerMsg;
